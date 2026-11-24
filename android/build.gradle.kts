@@ -1,9 +1,18 @@
 allprojects {
     repositories {
+        // Aliyun mirrors (China)
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
+
+        // DevNeeds & Myket mirrors (Iran)
+        maven { url = uri("https://maven.devneeds.ir/repository/google/") }
+        maven { url = uri("https://maven.devneeds.ir/repository/maven-central/") }
+        maven { url = uri("https://maven.myket.ir/repository/google/") }
+        maven { url = uri("https://maven.myket.ir/repository/maven-central/") }
+
         mavenCentral()
+        google()
     }
 }
 
