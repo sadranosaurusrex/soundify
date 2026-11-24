@@ -20,6 +20,7 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'User-Agent': 'SoundifyApp/1.0 (Flutter; Android)',
         },
       ),
     );
