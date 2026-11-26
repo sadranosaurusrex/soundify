@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:soundify/models/track_model.dart';
 import 'package:soundify/models/user_model.dart';
 
 void main() {
@@ -41,6 +42,75 @@ void main() {
       expect(updated.displayName, equals('New Name'));
       expect(updated.username, equals('student01'));
       expect(updated.email, equals('student@example.com'));
+    });
+  });
+
+  group('TrackModel Tests', () {
+    test('fromJson parses real server response and double duration safely', () {
+      // Arrange (Real payload sample from soundify.easyfound.ir)
+      final json = {
+        'id': 'BVVEUN627BS7VL4K2JU2E2JJYQ3GMMMK',
+        'title': 'Ye Mardi',
+        'artist': 'Ebi',
+        'album': 'Jane Javani',
+        'cover_url': 'https://lh3.googleusercontent.com/sample.jpg',
+        'duration': 214.0, // double instead of int to test defensive parsing
+        'stream_url':
+            'https://soundify.easyfound.ir/api/v1/tracks/BVVEUN627BS7VL4K2JU2E2JJYQ3GMMMK/stream/',
+      };
+
+      // Act
+      final track = TrackModel.fromJson(json);
+
+      // Assert
+      expect(track.id, equals('BVVEUN627BS7VL4K2JU2E2JJYQ3GMMMK'));
+      expect(track.title, equals('Ye Mardi'));
+      expect(track.artist, equals('Ebi'));
+      expect(track.duration, equals(214));
+      expect(track.isFavorite, isFalse);
+      expect(track.position, isNull);
+    });
+
+    test('formattedDuration converts seconds to mm:ss properly', () {
+      // Arrange
+      final track1 = TrackModel(
+        id: '1',
+        title: 'A',
+        artist: 'B',
+        duration: 214,
+        streamUrl: '',
+      );
+      final track2 = TrackModel(
+        id: '2',
+        title: 'C',
+        artist: 'D',
+        duration: 65,
+        streamUrl: '',
+      );
+
+      // Act & Assert
+      expect(track1.formattedDuration, equals('03:34'));
+      expect(track2.formattedDuration, equals('01:05'));
+    });
+
+    test('toJson omits position when null and includes it when set', () {
+      // Arrange
+      final normalTrack = TrackModel(
+        id: '1',
+        title: 'A',
+        artist: 'B',
+        duration: 120,
+        streamUrl: 'https://example.com/s',
+      );
+      final playlistTrack = normalTrack.copyWith(position: 2);
+
+      // Act
+      final normalMap = normalTrack.toJson();
+      final playlistMap = playlistTrack.toJson();
+
+      // Assert
+      expect(normalMap.containsKey('position'), isFalse);
+      expect(playlistMap['position'], equals(2));
     });
   });
 }
