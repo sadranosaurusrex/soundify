@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:soundify/models/paginated_response.dart';
 import 'package:soundify/models/playlist_model.dart';
 import 'package:soundify/models/track_model.dart';
 import 'package:soundify/models/user_model.dart';
@@ -159,6 +160,98 @@ void main() {
       expect(playlist.tracks.first.title, equals('Song A'));
       expect(playlist.tracks.first.position, equals(0));
       expect(playlist.trackCount, equals(1));
+    });
+  });
+
+  group('PaginatedResponse Tests', () {
+    test('fromJson parses count, next, results correctly with TrackModel', () {
+      // Arrange — یه JSON صفحه‌بندی شده مثل پاسخ واقعی سرور
+      final json = {
+        'count': 588,
+        'next': 'https://soundify.easyfound.ir/api/v1/tracks/?page=2',
+        'previous': null,
+        'results': [
+          {
+            'id': 'AAA111',
+            'title': 'Dokhtar Irooni',
+            'artist': 'Dariush',
+            'duration': 240,
+            'stream_url': 'https://example.com/stream/1',
+          },
+          {
+            'id': 'BBB222',
+            'title': 'Ey Iran',
+            'artist': 'Various',
+            'duration': 185,
+            'stream_url': 'https://example.com/stream/2',
+          },
+        ],
+      };
+
+      // Act — fromJsonT رو با TrackModel.fromJson پر می‌کنیم
+      final page = PaginatedResponse.fromJson(
+        json,
+        (item) => TrackModel.fromJson(item),
+      );
+
+      // Assert
+      expect(page.count, equals(588));
+      expect(page.next, equals('https://soundify.easyfound.ir/api/v1/tracks/?page=2'));
+      expect(page.previous, isNull);
+      expect(page.hasMore, isTrue);            // چون next != null
+      expect(page.results.length, equals(2));
+      expect(page.results[0].id, equals('AAA111'));
+      expect(page.results[0].title, equals('Dokhtar Irooni'));
+      expect(page.results[1].artist, equals('Various'));
+    });
+
+    test('hasMore is false when next is null', () {
+      // Arrange — صفحه آخر، next نداره
+      final json = {
+        'count': 2,
+        'next': null,
+        'previous': 'https://soundify.easyfound.ir/api/v1/tracks/?page=1',
+        'results': [
+          {
+            'id': 'CCC333',
+            'title': 'Akharin Bahar',
+            'artist': 'Googoosh',
+            'duration': 210,
+            'stream_url': 'https://example.com/stream/3',
+          },
+        ],
+      };
+
+      // Act
+      final page = PaginatedResponse.fromJson(
+        json,
+        (item) => TrackModel.fromJson(item),
+      );
+
+      // Assert
+      expect(page.hasMore, isFalse);           // چون next == null
+      expect(page.results.length, equals(1));
+    });
+
+    test('fromJson handles empty results list gracefully', () {
+      // Arrange — نتیجه خالی (مثلاً جست‌وجوی بی‌نتیجه)
+      final json = {
+        'count': 0,
+        'next': null,
+        'previous': null,
+        'results': [],
+      };
+
+      // Act
+      final page = PaginatedResponse.fromJson(
+        json,
+        (item) => TrackModel.fromJson(item),
+      );
+
+      // Assert
+      expect(page.count, equals(0));
+      expect(page.results, isEmpty);
+      expect(page.hasMore, isFalse);
     });
   });
 }
