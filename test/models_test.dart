@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:soundify/models/playlist_model.dart';
 import 'package:soundify/models/track_model.dart';
 import 'package:soundify/models/user_model.dart';
 
@@ -111,6 +112,53 @@ void main() {
       // Assert
       expect(normalMap.containsKey('position'), isFalse);
       expect(playlistMap['position'], equals(2));
+    });
+  });
+
+  group('PlaylistModel Tests', () {
+    test('fromJson handles summary response when tracks key is absent', () {
+      // Arrange
+      final json = {
+        'id': 1,
+        'name': 'Road Trip',
+        'track_count': 5,
+      };
+
+      // Act
+      final playlist = PlaylistModel.fromJson(json);
+
+      // Assert
+      expect(playlist.id, equals(1));
+      expect(playlist.name, equals('Road Trip'));
+      expect(playlist.trackCount, equals(5));
+      expect(playlist.tracks, isEmpty);
+    });
+
+    test('fromJson parses nested tracks and infers trackCount when omitted', () {
+      // Arrange
+      final json = {
+        'id': 2,
+        'name': 'Study',
+        'tracks': [
+          {
+            'id': 'T1',
+            'title': 'Song A',
+            'artist': 'X',
+            'duration': 100,
+            'stream_url': '',
+            'position': 0,
+          },
+        ],
+      };
+
+      // Act
+      final playlist = PlaylistModel.fromJson(json);
+
+      // Assert
+      expect(playlist.tracks.length, equals(1));
+      expect(playlist.tracks.first.title, equals('Song A'));
+      expect(playlist.tracks.first.position, equals(0));
+      expect(playlist.trackCount, equals(1));
     });
   });
 }
