@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:soundify/core/constants/api_endpoints.dart';
 import 'package:soundify/core/constants/app_colors.dart';
+import 'package:soundify/core/network/api_exceptions.dart';
 import 'package:soundify/core/storage/secure_storage_service.dart';
 import 'package:soundify/core/theme/app_theme.dart';
 import 'package:soundify/core/utils/debounce.dart';
@@ -227,6 +229,86 @@ void main() {
       // Mark as seen
       await service.setOnboardingSeen();
       expect(await service.hasSeenOnboarding(), isTrue);
+    });
+  });
+
+  group('ApiException Tests', () {
+    // ابزار کمکی برای ساختن DioException جعلی با کد وضعیت و body دلخواه
+    DioException makeBadResponse({
+      required int statusCode,
+      required dynamic data,
+    }) {
+      return DioException(
+        requestOptions: RequestOptions(path: '/test'),
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: RequestOptions(path: '/test'),
+          statusCode: statusCode,
+          data: data,
+        ),
+      );
+    }
+
+    test('connectionError maps to no-internet message', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/test'),
+        type: DioExceptionType.connectionError,
+      );
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.message, equals('اتصال به اینترنت برقرار نیست.'));
+      expect(ex.statusCode, isNull);
+    });
+
+    test('connectionTimeout maps to server not responding message', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/test'),
+        type: DioExceptionType.connectionTimeout,
+      );
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.message, equals('سرور پاسخگو نیست. لطفاً دوباره تلاش کنید.'));
+      expect(ex.statusCode, isNull);
+    });
+
+    test('401 with detail field returns server detail message', () {
+      final e = makeBadResponse(
+        statusCode: 401,
+        data: {'detail': 'توکن منقضی شده است'},
+      );
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.statusCode, equals(401));
+      expect(ex.message, equals('توکن منقضی شده است'));
+    });
+
+    test('400 with field-errors list returns first list item', () {
+      final e = makeBadResponse(
+        statusCode: 400,
+        data: {'email': ['این ایمیل قبلاً ثبت شده است.']},
+      );
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.statusCode, equals(400));
+      expect(ex.message, equals('این ایمیل قبلاً ثبت شده است.'));
+    });
+
+    test('500 with empty body falls back to status-code message', () {
+      final e = makeBadResponse(statusCode: 500, data: null);
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.statusCode, equals(500));
+      expect(ex.message, equals('خطای داخلی سرور. لطفاً بعداً امتحان کنید.'));
+    });
+
+    test('cancel type maps to cancel message', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/test'),
+        type: DioExceptionType.cancel,
+      );
+      final ex = ApiException.fromDioException(e);
+
+      expect(ex.message, equals('درخواست لغو شد.'));
     });
   });
 }
