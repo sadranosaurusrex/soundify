@@ -1,9 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:soundify/core/constants/api_endpoints.dart';
 import 'package:soundify/core/constants/app_colors.dart';
+import 'package:soundify/core/storage/secure_storage_service.dart';
 import 'package:soundify/core/theme/app_theme.dart';
 import 'package:soundify/core/utils/debounce.dart';
+
+/// حافظه شبیه‌سازی‌شده در RAM برای تست کردن SecureStorageService بدون نیاز به گوشی واقعی
+class _FakeSecureStorage extends Fake implements FlutterSecureStorage {
+  final Map<String, String> _store = {};
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    if (value == null) {
+      _store.remove(key);
+    } else {
+      _store[key] = value;
+    }
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    return _store[key];
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    _store.remove(key);
+  }
+}
 
 void main() {
   group('ApiEndpoints Tests', () {
@@ -115,6 +167,66 @@ void main() {
 
       // Assert
       expect(wasCalled, isFalse);
+    });
+  });
+
+  group('SecureStorageService Tests', () {
+    late _FakeSecureStorage fakeStorage;
+    late SecureStorageService service;
+
+    setUp(() {
+      fakeStorage = _FakeSecureStorage();
+      service = SecureStorageService(storage: fakeStorage);
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('saveTokens stores both tokens and getters retrieve them', () async {
+      // Arrange & Act
+      await service.saveTokens(
+        accessToken: 'access_123',
+        refreshToken: 'refresh_456',
+      );
+
+      // Assert
+      expect(await service.getAccessToken(), equals('access_123'));
+      expect(await service.getRefreshToken(), equals('refresh_456'));
+    });
+
+    test('clearTokens removes both access and refresh tokens', () async {
+      // Arrange
+      await service.saveTokens(
+        accessToken: 'access_123',
+        refreshToken: 'refresh_456',
+      );
+
+      // Act
+      await service.clearTokens();
+
+      // Assert
+      expect(await service.getAccessToken(), isNull);
+      expect(await service.getRefreshToken(), isNull);
+    });
+
+    test('isBiometricEnabled defaults to false and persists changes', () async {
+      // Initial state
+      expect(await service.isBiometricEnabled(), isFalse);
+
+      // Enable
+      await service.setBiometricEnabled(true);
+      expect(await service.isBiometricEnabled(), isTrue);
+
+      // Disable
+      await service.setBiometricEnabled(false);
+      expect(await service.isBiometricEnabled(), isFalse);
+    });
+
+    test('hasSeenOnboarding defaults to false and becomes true after setOnboardingSeen', () async {
+      // Initial state
+      expect(await service.hasSeenOnboarding(), isFalse);
+
+      // Mark as seen
+      await service.setOnboardingSeen();
+      expect(await service.hasSeenOnboarding(), isTrue);
     });
   });
 }
